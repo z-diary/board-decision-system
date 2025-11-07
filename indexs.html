@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>董事会决策实验系统 - 跳转中</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+        p {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        .link {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            display: inline-block;
+        }
+        a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading-spinner"></div>
+        <h1>董事会决策实验系统</h1>
+        <p>正在自动跳转到系统...</p>
+        <p>如果页面没有自动跳转，请点击：</p>
+        <div class="link">
+            <a href="index.html" id="manualLink">立即进入实验系统</a>
+        </div>
+    </div>
+
+    <script>
+        // 自动跳转
+        setTimeout(function() {
+            window.location.href = "index.html";
+        }, 2000);
+        
+        // 更新手动链接
+        document.getElementById('manualLink').href = "index.html";
+        
+        // 如果3秒后还没跳转，显示提示
+        setTimeout(function() {
+            if (window.location.pathname === '/' || window.location.pathname.includes('board-decision-system')) {
+                document.querySelector('p').innerHTML = '跳转较慢，请点击上方链接手动进入';
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
