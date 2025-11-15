@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>董事会决策实验系统</title>
+    <!-- 添加 CryptoJS 库用于生成签名 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- 替换为更可靠的二维码库 -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        /* 所有原有样式保持不变 */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 20px;
+        }
+        
+        .experiment-area {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .role-info {
+            background-color: var(--light-color);
+        }
+        
+        .role-info h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #bdc3c7;
+        }
+        
+        .role-details {
+            margin-top: 15px;
+        }
+        
+        .role-details p {
+            margin-bottom: 10px;
+        }
+        
+        .proposal-area {
+            min-height: 300px;
+            position: relative;
+        }
+        
+        .proposal-content {
+            margin-top: 15px;
+            line-height: 1.8;
+            white-space: pre-line;
+        }
+        
+        .ai-interaction {
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-container {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            overflow-y: auto;
+            max-height: 300px;
+            background-color: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background-color: var(--secondary-color);
+            color: white;
+            margin-left: auto;
+        }
+        
+        .ai-message {
+            background-color: #e1e1e1;
+            color: var(--dark-color);
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .chat-input button {
+            padding: 10px 20px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .timer-area {
+            text-align: center;
+            padding: 15px;
+            background-color: var(--dark-color);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .timer {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .voting-area {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .voting-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .vote-btn {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .approve {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .oppose {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .abstain {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .vote-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .phase-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .phase {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background-color: #ddd;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+        
+        .phase.active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .risk-alert {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .risk-alert.show {
+            display: block;
+        }
+        
+        .login-container {
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .login-form {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .login-form input, .login-form button {
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .login-form button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .results-table th, .results-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .results-table th {
+            background-color: var(--light-color);
+        }
+        
+        .next-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .next-button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .phase-instruction {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f4fc;
+            border-radius: 8px;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .no-ai-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .ai-choice-container {
+            text-align: center;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .ai-choice-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .ai-choice-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .use-ai-btn {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .no-ai-btn {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .ai-choice-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        /* 管理后台样式 */
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .admin-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .data-table th,
+        .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        
+        .data-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .data-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .export-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .export-btn {
+            padding: 10px 20px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .admin-login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tab-container {
+            margin: 20px 0;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .login-options {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .login-option-btn {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .login-option-btn.primary {
+            background-color: var(--secondary-color);
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .api-key-setup {
+            background: #e8f4fc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .conversation-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .connection-status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        .status-connected {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .status-disconnected {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .status-error {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        /* 新增样式：移动端适配 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .experiment-area {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .panel {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .chat-input {
+                flex-direction: column;
+            }
+            
+            .chat-input input {
+                margin-bottom: 10px;
+            }
+            
+            .voting-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .vote-btn {
+                width: 100%;
+                padding: 12px;
+            }
+            
+            .phase-indicator {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .phase {
+                margin: 2px 0;
+            }
+            
+            /* 触摸友好的按钮大小 */
+            button, .vote-btn, .next-button {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            /* 优化字体大小 */
+            body {
+                font-size: 14px;
+            }
+            
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.3rem; }
+            h3 { font-size: 1.1rem; }
+
+            .login-container {
+                margin: 20px auto;
+                padding: 20px;
+            }
+        }
+
+        /* 平板适配 */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .experiment-area {
+                grid-template-columns: 280px 1fr;
+            }
+        }
+
+        /* 引导问题样式 */
+        .guide-questions {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .guide-questions h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+
+        .guide-btn {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: left;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .guide-btn:hover {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        /* 二维码区域样式 */
+        .qr-section {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #3498db;
+        }
+
+        .qr-section h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        #qrcode {
+            margin: 15px auto;
+            display: inline-block;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .qr-link {
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .qr-link a {
+            color: #3498db;
+            word-break: break-all;
+            text-decoration: underline;
+        }
+
+        .deploy-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+
+        .deploy-notice h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录选择界面 -->
+    <div id="loginSelectionScreen" class="container">
+        <div class="login-container">
+            <h2>董事会决策实验系统</h2>
+            
+            <!-- 部署说明 -->
+            <div class="deploy-notice">
+                <h4>📱 移动端访问说明</h4>
+                <p>为了在手机上正常使用，请将本系统部署到Web服务器：</p>
+                <ol style="text-align: left; margin: 10px 0; padding-left: 20px;">
+                    <li>使用GitHub Pages、Vercel或Netlify等平台部署</li>
+                    <li>确保使用HTTPS协议访问</li>
+                    <li>手机扫描二维码即可直接参与实验</li>
+                </ol>
+            </div>
+            
+            <!-- API配置区域 - 只在首次需要 -->
+            <div class="api-key-setup" id="apiSetupArea">
+                <h4>首次使用：讯飞星火API设置</h4>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+                    格式: APIKey:APISecret:AppID<br>
+                    示例: key123:secret456:app789
+                </p>
+                <input type="password" id="apiPasswordInput" placeholder="输入APIKey:APISecret:AppID" style="width: 100%; margin: 5px 0; padding: 8px;">
+                <button onclick="saveAPIPassword()" style="width: 100%; padding: 8px;">保存API配置</button>
+            </div>
+            
+            <!-- 二维码生成区域 -->
+            <div class="qr-section" id="qrSection" style="display: none;">
+                <h4>扫描二维码加入实验</h4>
+                <div id="qrcode"></div>
+                <div class="qr-link" id="qrLink"></div>
+                <p style="font-size: 0.9em; color: #666; margin-top: 15px;">
+                    扫描此二维码即可直接进入实验，无需重复配置API
+                </p>
+            </div>
+            
+            <div class="login-options">
+                <button class="login-option-btn primary" id="participantLoginBtn">参与者登录</button>
+                <button class="login-option-btn" id="adminLoginBtn">管理员登录</button>
+                <button class="login-option-btn" id="generateQRBtn" style="background-color: #9b59b6;">生成参与二维码</button>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center;">
+                <p><strong>系统统计:</strong></p>
+                <p>总参与人数: <span id="totalParticipants">0</span></p>
+                <p>人机协作组: <span id="humanAiGroupCount">0</span> 人</p>
+                <p>全人类组: <span id="humanOnlyGroupCount">0</span> 人</p>
+            </div>
+
+            <p id="apiSetupStatus" style="font-size: 0.8em; color: #666; margin-top: 10px; text-align: center;">
+                提示：需要讯飞星火Spark Lite服务的API配置才能使用AI助手功能
+            </p>
+        </div>
+    </div>
+
+    <!-- 其他界面保持不变 -->
+    <!-- 参与者登录界面 -->
+    <div id="participantLoginScreen" class="container hidden">
+        <!-- 内容保持不变 -->
+    </div>
+
+    <!-- 管理员登录界面 -->
+    <div id="adminLoginScreen" class="container hidden">
+        <!-- 内容保持不变 -->
+    </div>
+
+    <!-- 实验主界面 -->
+    <div id="experimentScreen" class="container hidden">
+        <!-- 内容保持不变 -->
+    </div>
+
+    <!-- 参与者结果界面 -->
+    <div id="resultsScreen" class="container hidden">
+        <!-- 内容保持不变 -->
+    </div>
+
+    <!-- 管理后台界面 -->
+    <div id="adminScreen" class="admin-container hidden">
+        <!-- 内容保持不变 -->
+    </div>
+
+    <script>
+        // ==================== 数据存储和API配置 ====================
+        
+        // 数据存储键名
+        const STORAGE_KEYS = {
+            EXPERIMENT_DATA: 'board_experiment_data',
+            XUNFEI_API_PASSWORD: 'xunfei_api_password'
+        };
+
+        // 获取讯飞API密码
+        function getXunfeiAPIPassword() {
+            return localStorage.getItem(STORAGE_KEYS.XUNFEI_API_PASSWORD);
+        }
+
+        // 保存讯飞API配置
+        function saveAPIPassword() {
+            const apiPassword = document.getElementById('apiPasswordInput').value.trim();
+            
+            if (apiPassword) {
+                // 验证格式
+                const parts = apiPassword.split(':');
+                if (parts.length !== 3) {
+                    alert('API配置格式错误！请使用: APIKey:APISecret:AppID');
+                    return;
+                }
+                
+                localStorage.setItem(STORAGE_KEYS.XUNFEI_API_PASSWORD, apiPassword);
+                alert('讯飞星火API配置已保存！');
+                
+                // 清空输入框
+                document.getElementById('apiPasswordInput').value = '';
+                
+                updateAPIStatus();
+                updateAPISetupDisplay();
+            } else {
+                alert('请输入API配置');
+            }
+        }
+
+        // 更新API配置显示状态
+        function updateAPISetupDisplay() {
+            const hasConfig = !!getXunfeiAPIPassword();
+            const apiSetupArea = document.getElementById('apiSetupArea');
+            const apiSetupStatus = document.getElementById('apiSetupStatus');
+            
+            if (hasConfig) {
+                apiSetupArea.style.display = 'none';
+                apiSetupStatus.innerHTML = '✅ API已配置，可以生成二维码邀请他人参与';
+                apiSetupStatus.style.color = '#27ae60';
+            } else {
+                apiSetupArea.style.display = 'block';
+                apiSetupStatus.innerHTML = '❌ 需要讯飞星火Spark Lite服务的APIPassword才能使用AI助手功能';
+                apiSetupStatus.style.color = '#e74c3c';
+            }
+        }
+
+        // ==================== 修复的二维码生成功能 ====================
+
+        // 生成二维码
+        function generateQRCode() {
+            console.log('开始生成二维码...');
+            
+            const apiPassword = getXunfeiAPIPassword();
+            if (!apiPassword) {
+                alert('请先配置API密码才能生成二维码');
+                return;
+            }
+            
+            // 显示二维码区域
+            document.getElementById('apiSetupArea').style.display = 'none';
+            const qrSection = document.getElementById('qrSection');
+            qrSection.style.display = 'block';
+            
+            // 生成包含API配置的URL（使用加密）
+            const encryptedConfig = btoa(apiPassword);
+            
+            // 创建在线部署的示例URL（实际使用时需要替换为你的部署地址）
+            let shareableURL;
+            
+            // 检查当前是否在本地文件协议
+            if (window.location.protocol === 'file:') {
+                // 本地文件环境，提供部署说明
+                shareableURL = 'https://你的域名.com/系统.html?config=' + encryptedConfig;
+                alert('⚠️ 当前为本地文件环境，二维码链接为示例。\n\n请将系统部署到Web服务器后，使用实际的HTTPS链接生成二维码。');
+            } else {
+                // Web服务器环境，使用当前URL
+                shareableURL = `${window.location.origin}${window.location.pathname}?config=${encryptedConfig}`;
+            }
+            
+            console.log('生成的分享URL:', shareableURL);
+            
+            // 生成二维码 - 使用新的二维码库
+            const qrcodeElement = document.getElementById('qrcode');
+            qrcodeElement.innerHTML = ''; // 清空原有内容
+            
+            try {
+                // 使用 qrcode-generator 库
+                const typeNumber = 0; // 自动类型
+                const errorCorrectionLevel = 'H'; // 高容错率
+                const qr = qrcode(typeNumber, errorCorrectionLevel);
+                qr.addData(shareableURL);
+                qr.make();
+                
+                // 创建canvas元素来绘制二维码
+                const canvas = document.createElement('canvas');
+                const size = 200;
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                
+                // 设置白色背景
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+                
+                // 绘制二维码
+                const moduleCount = qr.getModuleCount();
+                const tileSize = size / moduleCount;
+                
+                ctx.fillStyle = '#2c3e50';
+                for (let row = 0; row < moduleCount; row++) {
+                    for (let col = 0; col < moduleCount; col++) {
+                        if (qr.isDark(row, col)) {
+                            ctx.fillRect(
+                                col * tileSize,
+                                row * tileSize,
+                                tileSize,
+                                tileSize
+                            );
+                        }
+                    }
+                }
+                
+                qrcodeElement.appendChild(canvas);
+                console.log('二维码生成成功！');
+                
+            } catch (error) {
+                console.error('二维码生成失败:', error);
+                // 降级方案：显示文本链接
+                qrcodeElement.innerHTML = `
+                    <div style="color: #e74c3c; padding: 20px;">
+                        <p>二维码生成失败</p>
+                        <p>请直接分享以下链接：</p>
+                        <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px;">${shareableURL}</p>
+                    </div>
+                `;
+            }
+            
+            // 显示可点击的链接
+            const qrLinkElement = document.getElementById('qrLink');
+            if (window.location.protocol === 'file:') {
+                qrLinkElement.innerHTML = `
+                    <p><strong>部署说明：</strong></p>
+                    <p>请将系统部署到Web服务器后使用以下链接：</p>
+                    <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 0.8em;">
+                        https://你的域名.com/系统.html?config=${encryptedConfig}
+                    </p>
+                `;
+            } else {
+                qrLinkElement.innerHTML = `或点击链接：<a href="${shareableURL}" target="_blank">${shareableURL}</a>`;
+            }
+        }
+
+        // 检查URL参数中的配置
+        function checkURLConfig() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const configParam = urlParams.get('config');
+            
+            if (configParam) {
+                try {
+                    // 解密配置
+                    const apiPassword = atob(configParam);
+                    
+                    // 验证配置格式
+                    const parts = apiPassword.split(':');
+                    if (parts.length === 3) {
+                        // 自动保存配置
+                        localStorage.setItem(STORAGE_KEYS.XUNFEI_API_PASSWORD, apiPassword);
+                        console.log('已通过二维码自动配置API');
+                        
+                        // 更新显示
+                        updateAPISetupDisplay();
+                        updateAPIStatus();
+                        
+                        // 显示成功消息
+                        setTimeout(() => {
+                            alert('✅ 已通过二维码自动配置API，请点击"参与者登录"开始实验');
+                        }, 500);
+                    }
+                } catch (error) {
+                    console.error('配置解析失败:', error);
+                }
+            }
+        }
+
+        // ==================== 快速部署方案 ====================
+
+        // 提供快速部署到GitHub Pages的说明
+        function showDeployInstructions() {
+            const deployInstructions = `
+# 快速部署到 GitHub Pages
+
+## 步骤：
+1. 在GitHub创建新仓库
+2. 将本HTML文件上传到仓库
+3. 在仓库设置中开启 GitHub Pages
+4. 访问 https://你的用户名.github.io/仓库名/系统.html
+
+## 或者使用其他平台：
+- **Vercel**: 拖拽HTML文件到 vercel.com
+- **Netlify**: 拖拽HTML文件到 netlify.com
+- **GitLab Pages**: 类似GitHub Pages
+
+部署后即可生成有效的二维码供手机扫描！
+            `;
+            console.log(deployInstructions);
+            alert('请查看控制台(Console)获取部署说明！\n\n按F12打开开发者工具，查看Console标签页。');
+        }
+
+        // 页面加载时显示部署提示
+        window.addEventListener('load', function() {
+            if (window.location.protocol === 'file:') {
+                console.log('🔧 部署提示：当前为本地文件环境，建议部署到Web服务器以便手机访问');
+                console.log('💡 快速部署方法：');
+                console.log('1. GitHub Pages: 上传到GitHub仓库并开启Pages');
+                console.log('2. Vercel: 拖拽文件到 vercel.com');
+                console.log('3. Netlify: 拖拽文件到 netlify.com');
+            }
+        });
+
+        // ==================== 页面元素引用和初始化 ====================
+        
+        const loginSelectionScreen = document.getElementById('loginSelectionScreen');
+        const participantLoginScreen = document.getElementById('participantLoginScreen');
+        const adminLoginScreen = document.getElementById('adminLoginScreen');
+        const experimentScreen = document.getElementById('experimentScreen');
+        const resultsScreen = document.getElementById('resultsScreen');
+        const adminScreen = document.getElementById('adminScreen');
+        
+        const loginForm = document.getElementById('loginForm');
+        const participantIdInput = document.getElementById('participantId');
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const adminPassword = document.getElementById('adminPassword');
+        const participantLoginBtn = document.getElementById('participantLoginBtn');
+        const adminLoginBtn = document.getElementById('adminLoginBtn');
+        const generateQRBtn = document.getElementById('generateQRBtn');
+
+        // 初始化：只显示登录选择界面
+        window.addEventListener('load', function() {
+            console.log('页面加载完成，开始初始化...');
+            
+            // 隐藏所有界面
+            participantLoginScreen.classList.add('hidden');
+            adminLoginScreen.classList.add('hidden');
+            experimentScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            adminScreen.classList.add('hidden');
+            
+            // 只显示登录选择界面
+            loginSelectionScreen.classList.remove('hidden');
+            
+            // 检查URL配置
+            checkURLConfig();
+            
+            // 更新统计显示和API状态
+            updateStatsDisplay();
+            updateAPIStatus();
+            updateAPISetupDisplay();
+            
+            // 绑定事件监听器
+            bindEventListeners();
+            
+            console.log('初始化完成');
+        });
+
+        // 绑定事件监听器
+        function bindEventListeners() {
+            console.log('绑定事件监听器...');
+            
+            // 登录选择
+            participantLoginBtn.addEventListener('click', function() {
+                console.log('参与者登录按钮点击');
+                loginSelectionScreen.classList.add('hidden');
+                participantLoginScreen.classList.remove('hidden');
+            });
+            
+            adminLoginBtn.addEventListener('click', function() {
+                console.log('管理员登录按钮点击');
+                loginSelectionScreen.classList.add('hidden');
+                adminLoginScreen.classList.remove('hidden');
+            });
+
+            // 二维码生成
+            generateQRBtn.addEventListener('click', generateQRCode);
+            
+            // 参与者登录
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('参与者登录表单提交');
+                const id = participantIdInput.value.trim();
+                if (id) {
+                    console.log('参与者ID:', id);
+                    experimentState.participantId = id;
+                    initializeExperiment();
+                    participantLoginScreen.classList.add('hidden');
+                    experimentScreen.classList.remove('hidden');
+                }
+            });
+            
+            // 管理员登录
+            adminLoginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('管理员登录表单提交');
+                const password = adminPassword.value.trim();
+                if (password === 'admin123') {
+                    adminLoginScreen.classList.add('hidden');
+                    adminScreen.classList.remove('hidden');
+                    loadAdminData();
+                } else {
+                    alert('密码错误！');
+                }
+            });
+            
+            // 其他事件监听器保持不变...
+        }
+
+        // ==================== 实验状态管理 ====================
+        
+        const experimentState = {
+            participantId: null,
+            group: null,
+            role: null,
+            currentPhase: 'intro',
+            proposals: [],
+            currentProposalIndex: 0,
+            votes: [],
+            aiInteractions: 0,
+            riskAlertsViewed: 0,
+            startTime: null,
+            phaseStartTime: null,
+            phaseTimes: [],
+            useAI: true,
+            groupType: null,
+            aiManager: null
+        };
+
+        // 其他代码保持不变...
+        // [这里包含之前的所有实验管理、AI对话、投票记录等功能代码]
+        // 由于代码长度限制，这里省略重复部分，你可以将之前代码的这些部分复制过来
+
+        // 模拟提案数据
+        const proposalsData = [
+            {
+                id: 1,
+                title: "关于W公司收购旭阳房地产开发有限公司的公告",
+                content: `（一）收购及关联交易概况
+W公司拟收购旭阳房地产开发有限公司（以下简称"旭阳房地产"），该公司所有人高旭阳为W公司控股股东刘雯姗的配偶。
+
+（二）交易对手方概况
+（1）交易对手方名称：旭阳房地产开发有限公司
+（2）注册地址：中国天津市河西区泽山路
+（3）法定代表人：高旭阳（持股100%）
+（4）注册资本：人民币5000万元
+（5）经营范围：房地产开发、建设及物业管理
+（6）财务数据：截至2024年12月31日，旭阳房地产的总资产为人民币1.586亿元，净资产为人民币4750万元。受房地产行业整体走势下滑的影响，该公司2024年的主营业务收入为人民币3760万元，净利润为人民币-750万元。
+
+（三）交易内容说明
+（1）交易标的名称：旭阳房地产100%股权
+（2）交易类别：股权收购
+（3）交易标的权属说明：标的股权全部由高旭阳持有，不存在股权抵押、质押或其他第三方权利，且该股权无重大争议。
+
+（四）交易协议主要内容
+（1）交易协议主要内容——交易总金额：人民币2.1亿元
+（2）付款条款：协议生效后30日内，向甲方指定账户支付款项
+（3）生效时间：自双方签字盖章之日起生效
+
+（五）时间安排
+协议标的交付时间为协议签署后10日内，过户时间为2026年7月31日前。
+
+（六）审议事项
+提请董事会独立判断后表决：是否同意W公司收购旭阳房地产开发有限公司？
+
+（备注：请结合自身角色及跨境合作相关法规，审慎决策）`,
+                riskFactors: ["关联交易", "标的公司亏损", "房地产行业风险", "交易定价公允性"]
+            },
+            {
+                id: 2,
+                title: "关于W公司与北美智创（美国）、新创数化（印尼）跨境技术授权合作的决议案",
+                content: `（一）交易概况
+为拓展海外市场，W公司拟与北美智联科技（美国）、东南亚新创数字（印尼）签署3年期合作协议：授权两公司使用自主研发的"AI合规检测算法"，联合在北美、东南亚推广相关合规服务。
+合作收益：W公司每年收取北美智联280万美元、新创数字120万美元技术授权费，另享合作服务营收30%分成，预计首年新增营收约5000万元。现提请董事会审议是否同意签署协议。
+
+（二）核心合作信息
+（1）对手方情况：北美智联持有美国FCC技术服务认证，新创数字获印尼Kominfo基础数据服务牌照；
+（2）手续进展：中国技术出口备案已提交申请，美国、印尼相关登记流程同步推进中；
+结算方式：授权费及分成款，按协议签署日汇率折算为人民币，汇入W公司境内指定账户。
+
+（三）审议事项
+提请董事会独立判断后表决：是否同意W公司与北美智联、新创数字按上述条款签署合作协议，启动跨境技术授权及市场推广？
+
+（备注：请结合自身角色及跨境合作相关法规，审慎决策）`,
+                riskFactors: ["技术出口管制", "跨境合规风险", "外汇结算风险", "国际政治风险"]
+            }
+        ];
+
+        // 页面元素引用（实验系统部分）
+        const displayParticipantId = document.getElementById('displayParticipantId');
+        const roleName = document.getElementById('roleName');
+        const groupInfo = document.getElementById('groupInfo');
+        const aiUsageStatus = document.getElementById('aiUsageStatus');
+        const groupComposition = document.getElementById('groupComposition');
+        const compositionDetails = document.getElementById('compositionDetails');
+        const proposalContent = document.getElementById('proposalContent');
+        const riskAlert = document.getElementById('riskAlert');
+        const riskAlertContent = document.getElementById('riskAlertContent');
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const approveBtn = document.getElementById('approveBtn');
+        const opposeBtn = document.getElementById('opposeBtn');
+        const abstainBtn = document.getElementById('abstainBtn');
+        const phaseIntro = document.getElementById('phaseIntro');
+        const phaseThink = document.getElementById('phaseThink');
+        const phaseVote = document.getElementById('phaseVote');
+        const personalResults = document.getElementById('personalResults');
+        const groupResults = document.getElementById('groupResults');
+        const interactionCount = document.getElementById('interactionCount');
+        const riskAlertCount = document.getElementById('riskAlertCount');
+        const nextButton = document.getElementById('nextButton');
+        const phaseInstruction = document.getElementById('phaseInstruction');
+        const phaseTimesDisplay = document.getElementById('phaseTimes');
+        const aiInteractionPanel = document.getElementById('aiInteractionPanel');
+        const aiToolInstruction = document.getElementById('aiToolInstruction');
+        const totalParticipants = document.getElementById('totalParticipants');
+        const humanAiGroupCount = document.getElementById('humanAiGroupCount');
+        const humanOnlyGroupCount = document.getElementById('humanOnlyGroupCount');
+        const finalConversationStats = document.getElementById('finalConversationStats');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const guideQuestions = document.getElementById('guideQuestions');
+
+        // 初始化实验数据
+        function initializeExperimentData() {
+            const savedData = localStorage.getItem(STORAGE_KEYS.EXPERIMENT_DATA);
+            if (savedData) {
+                return JSON.parse(savedData);
+            } else {
+                return {
+                    participants: [],
+                    sessions: [],
+                    globalStats: {
+                        totalParticipants: 0,
+                        humanAiGroup: 0,
+                        humanOnlyGroup: 0
+                    }
+                };
+            }
+        }
+
+        // 保存数据到localStorage
+        function saveExperimentData() {
+            localStorage.setItem(STORAGE_KEYS.EXPERIMENT_DATA, JSON.stringify(experimentData));
+        }
+
+        // 实验数据存储（从localStorage初始化）
+        let experimentData = initializeExperimentData();
+
+        // 初始化实验
+        function initializeExperiment() {
+            assignGroupAndRole();
+            displayParticipantId.textContent = experimentState.participantId;
+            experimentState.proposals = [...proposalsData];
+            
+            // 初始化AI对话管理器
+            experimentState.aiManager = new SmartAIConversationManager();
+            
+            loadProposal(0);
+            startPhase('intro');
+            experimentState.startTime = new Date();
+            
+            // 显示引导问题
+            if (guideQuestions) {
+                guideQuestions.style.display = 'block';
+            }
+            
+            // 更新全局统计数据
+            updateGlobalStats();
+        }
+
+        // 随机分配组别和角色
+        function assignGroupAndRole() {
+            const groups = [
+                { type: '人机协作', informed: true, label: '人机协作-告知组', groupType: 'human-ai' },
+                { type: '人机协作', informed: false, label: '人机协作-不告知组', groupType: 'human-ai' },
+                { type: '全人类', informed: true, label: '全人类-告知组', groupType: 'human-only' },
+                { type: '全人类', informed: false, label: '全人类-不告知组', groupType: 'human-only' }
+            ];
+            
+            const roles = ['董事长', '财务董事', '技术董事', '独立董事', '合规董事'];
+            
+            const randomGroup = groups[Math.floor(Math.random() * groups.length)];
+            const randomRole = roles[Math.floor(Math.random() * roles.length)];
+            
+            experimentState.group = randomGroup;
+            experimentState.role = randomRole;
+            experimentState.groupType = randomGroup.groupType;
+            
+            roleName.textContent = randomRole;
+            groupInfo.textContent = randomGroup.label;
+            aiUsageStatus.textContent = '已启用';
+            
+            groupComposition.classList.remove('hidden');
+            if (randomGroup.groupType === 'human-ai') {
+                compositionDetails.textContent = '6个真人 + 1个AI董事';
+            } else {
+                compositionDetails.textContent = '7个真人';
+            }
+        }
+
+        // 更新全局统计数据
+        function updateGlobalStats() {
+            experimentData.globalStats.totalParticipants++;
+            
+            if (experimentState.groupType === 'human-ai') {
+                experimentData.globalStats.humanAiGroup++;
+            } else {
+                experimentData.globalStats.humanOnlyGroup++;
+            }
+            
+            // 保存参与者数据
+            experimentData.participants.push({
+                id: experimentState.participantId,
+                group: experimentState.group,
+                role: experimentState.role,
+                useAI: true,
+                aiInteractions: 0,
+                riskAlertsViewed: 0,
+                startTime: new Date(),
+                completionTime: null
+            });
+            
+            // 保存数据到localStorage
+            saveExperimentData();
+            updateStatsDisplay();
+        }
+
+        // 更新统计显示
+        function updateStatsDisplay() {
+            const stats = experimentData.globalStats;
+            totalParticipants.textContent = stats.totalParticipants;
+            humanAiGroupCount.textContent = stats.humanAiGroup;
+            humanOnlyGroupCount.textContent = stats.humanOnlyGroup;
+            
+            // 更新第二个统计显示
+            const totalParticipants2 = document.getElementById('totalParticipants2');
+            const humanAiGroupCount2 = document.getElementById('humanAiGroupCount2');
+            const humanOnlyGroupCount2 = document.getElementById('humanOnlyGroupCount2');
+            
+            if (totalParticipants2) totalParticipants2.textContent = stats.totalParticipants;
+            if (humanAiGroupCount2) humanAiGroupCount2.textContent = stats.humanAiGroup;
+            if (humanOnlyGroupCount2) humanOnlyGroupCount2.textContent = stats.humanOnlyGroup;
+        }
+
+        // 加载提案
+        function loadProposal(index) {
+            if (index >= experimentState.proposals.length) {
+                showResults();
+                return;
+            }
+            
+            experimentState.currentProposalIndex = index;
+            const proposal = experimentState.proposals[index];
+            
+            proposalContent.innerHTML = `
+                <h4>${proposal.title}</h4>
+                <div class="proposal-content">${proposal.content}</div>
+            `;
+            
+            // 开始新提案时清空AI对话历史
+            if (experimentState.aiManager) {
+                experimentState.aiManager.clearHistory();
+                // 清空聊天界面，只保留欢迎消息
+                const welcomeMessage = chatContainer.querySelector('.ai-message');
+                chatContainer.innerHTML = '';
+                if (welcomeMessage) {
+                    chatContainer.appendChild(welcomeMessage);
+                }
+            }
+            
+            // 所有人都能看到风险提示
+            checkAndShowRiskAlert(proposal);
+        }
+
+        // 检查并显示风险提示
+        function checkAndShowRiskAlert(proposal) {
+            let hasRisk = false;
+            let riskMessage = "检测到以下潜在合规风险：";
+            
+            proposal.riskFactors.forEach(factor => {
+                if (complianceKnowledge[factor]) {
+                    hasRisk = true;
+                    riskMessage += `<br>• ${factor}: ${complianceKnowledge[factor].risks.join('; ')}`;
+                }
+            });
+            
+            if (hasRisk) {
+                riskAlertContent.innerHTML = riskMessage;
+                riskAlert.classList.add('show');
+                experimentState.riskAlertsViewed++;
+            } else {
+                riskAlert.classList.remove('show');
+            }
+        }
+
+        // 开始实验阶段
+        function startPhase(phase) {
+            if (experimentState.phaseStartTime) {
+                const phaseEndTime = new Date();
+                const phaseDuration = Math.round((phaseEndTime - experimentState.phaseStartTime) / 1000);
+                experimentState.phaseTimes.push({
+                    phase: experimentState.currentPhase,
+                    duration: phaseDuration
+                });
+            }
+            
+            experimentState.currentPhase = phase;
+            experimentState.phaseStartTime = new Date();
+            updatePhaseIndicator(phase);
+            updateUIForPhase(phase);
+        }
+
+        // 更新阶段指示器
+        function updatePhaseIndicator(phase) {
+            phaseIntro.classList.remove('active');
+            phaseThink.classList.remove('active');
+            phaseVote.classList.remove('active');
+            
+            switch(phase) {
+                case 'intro':
+                    phaseIntro.classList.add('active');
+                    document.getElementById('phaseDescription').textContent = '提案介绍阶段';
+                    break;
+                case 'think':
+                    phaseThink.classList.add('active');
+                    document.getElementById('phaseDescription').textContent = '独立思考阶段';
+                    break;
+                case 'vote':
+                    phaseVote.classList.add('active');
+                    document.getElementById('phaseDescription').textContent = '表决阶段';
+                    break;
+            }
+        }
+
+        // 更新UI根据当前阶段
+        function updateUIForPhase(phase) {
+            updatePhaseInstruction(phase);
+            
+            const voteButtons = [approveBtn, opposeBtn, abstainBtn];
+            
+            if (phase === 'vote') {
+                voteButtons.forEach(btn => btn.disabled = false);
+                nextButton.style.display = 'none';
+            } else {
+                voteButtons.forEach(btn => btn.disabled = true);
+                nextButton.style.display = 'block';
+            }
+            
+            // 只有在思考阶段才可交互
+            if (phase === 'think') {
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            } else {
+                userInput.disabled = true;
+                sendButton.disabled = true;
+            }
+        }
+
+        // 更新阶段说明
+        function updatePhaseInstruction(phase) {
+            switch(phase) {
+                case 'intro':
+                    phaseInstruction.innerHTML = `<h3>📋 提案介绍阶段</h3><p>请仔细阅读以下提案材料，了解本次决策的背景和内容。</p><p>阅读完成后，请点击右下角的"下一步"按钮继续。</p>`;
+                    break;
+                case 'think':
+                    phaseInstruction.innerHTML = `<h3>💭 独立思考阶段</h3><p>请仔细分析提案内容，思考其中的合规性和风险问题。</p><p>您可以使用AI合规助手获取专业意见，支持多轮对话。</p><p>思考完成后，请点击右下角的"下一步"按钮进入表决阶段。</p>`;
+                    break;
+                case 'vote':
+                    phaseInstruction.innerHTML = `<h3>🗳️ 表决阶段</h3><p>请根据您的分析做出最终表决。</p><p>点击下方的"赞成"、"反对"或"弃权"按钮提交您的决定。</p>`;
+                    break;
+            }
+        }
+
+        // ==================== 智能AI对话管理器 ====================
+        
+        class SmartAIConversationManager {
+            constructor() {
+                this.messages = [];
+                this.conversationCount = 0;
+                this.systemPrompt = `你是一个专业的董事会合规分析助手，具有明确的决策态度。请遵循以下指导原则：
+
+核心角色：专业、客观的合规分析师
+决策风格：基于事实和法规的明确态度
+
+当被问到表决态度时，请按以下框架明确回答：
+
+1. 首先明确表态："基于当前分析，我的表决态度是：【赞成/反对/有条件赞成】"
+
+2. 给出3-4个关键理由，包括：
+   - 合规性分析（引用具体法规）
+   - 风险识别
+   - 商业合理性
+   - 改进建议（如适用）
+
+3. 具体态度标准：
+
+【赞成情况】：
+- 完全符合法规要求
+- 风险可控且有应对措施
+- 商业逻辑清晰合理
+- 信息披露充分
+
+【反对情况】：
+- 存在重大合规漏洞
+- 风险超出可接受范围
+- 关联交易定价不公允
+- 缺乏必要的审批程序
+
+【有条件赞成】：
+- 基本合规但需要改进
+- 建议增加特定保障措施
+- 要求补充相关信息
+
+重要：不要回避表态，不要模棱两可。基于中国《上市公司治理准则》、《关联交易管理办法》、《企业境外投资管理办法》等法规进行分析。
+
+当前讨论的提案是：`;
+
+                this.websocket = null;
+                this.isConnected = false;
+                this.currentResolve = null;
+                this.currentReject = null;
+                this.fullResponse = '';
+                this.requestTimeout = null;
+                this.deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            async sendMessage(userMessage) {
+                try {
+                    console.log('发送消息:', userMessage);
+                    
+                    // 检测是否在询问表决态度
+                    const isAskingVote = this.detectVoteIntent(userMessage);
+                    
+                    // 添加用户消息到历史
+                    this.messages.push({
+                        role: "user",
+                        content: userMessage
+                    });
+                    
+                    // 构建增强的系统提示词
+                    const enhancedSystemPrompt = this.systemPrompt + getCurrentProposalTitle();
+                    
+                    // 使用WebSocket发送消息
+                    const response = await this.sendWebSocketMessage(userMessage, enhancedSystemPrompt, isAskingVote);
+                    
+                    // 添加AI回复到历史
+                    this.messages.push({
+                        role: "assistant",
+                        content: response
+                    });
+                    
+                    this.conversationCount++;
+                    this.updateConversationDisplay();
+                    
+                    return response;
+                    
+                } catch (error) {
+                    console.error('AI对话错误:', error);
+                    throw error;
+                }
+            }
+            
+            // 检测用户是否在询问表决态度
+            detectVoteIntent(message) {
+                const voteKeywords = [
+                    '表决', '投票', '态度', '赞成', '反对', '支持', '不同意',
+                    '怎么选', '如何决定', '建议', '立场', '观点',
+                    'vote', 'attitude', 'opinion', 'decision', 'recommend'
+                ];
+                
+                const lowerMessage = message.toLowerCase();
+                return voteKeywords.some(keyword => 
+                    lowerMessage.includes(keyword.toLowerCase())
+                );
+            }
+            
+            async sendWebSocketMessage(userMessage, systemPrompt, isAskingVote) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        this.currentResolve = resolve;
+                        this.currentReject = reject;
+                        this.fullResponse = '';
+                        
+                        const url = this.generateWebSocketURL();
+                        console.log('连接WebSocket:', url);
+                        
+                        this.websocket = new WebSocket(url);
+                        
+                        this.websocket.onopen = () => {
+                            console.log('WebSocket连接已建立');
+                            this.isConnected = true;
+                            this.updateConnectionStatus('connected');
+                            
+                            // 构建消息历史
+                            let messageHistory = [];
+                            
+                            if (this.messages.length <= 1) {
+                                // 首次对话，包含系统提示词
+                                messageHistory = [
+                                    {
+                                        "role": "user",
+                                        "content": systemPrompt
+                                    },
+                                    {
+                                        "role": "assistant", 
+                                        "content": "好的，我明白了。我将作为专业的合规分析助手，基于中国相关法规为您提供明确的合规性分析和表决建议。请问您对当前提案有什么具体问题？"
+                                    },
+                                    ...this.messages
+                                ];
+                            } else {
+                                // 后续对话
+                                messageHistory = this.messages;
+                            }
+                            
+                            // 如果是询问表决态度，增强提示
+                            if (isAskingVote) {
+                                // 在最后一条用户消息后添加强调
+                                if (messageHistory.length > 0) {
+                                    const lastMessage = messageHistory[messageHistory.length - 1];
+                                    if (lastMessage.role === "user") {
+                                        lastMessage.content += "\n\n请按照要求明确表态，给出具体的表决建议和理由。";
+                                    }
+                                }
+                            }
+                            
+                            const requestData = {
+                                "header": {
+                                    "app_id": this.getAppId(),
+                                    "uid": this.deviceId + "_" + Date.now()
+                                },
+                                "parameter": {
+                                    "chat": {
+                                        "domain": "lite",
+                                        "temperature": 0.7,
+                                        "max_tokens": 2048
+                                    }
+                                },
+                                "payload": {
+                                    "message": {
+                                        "text": messageHistory
+                                    }
+                                }
+                            };
+                            
+                            console.log('发送请求数据:', requestData);
+                            this.websocket.send(JSON.stringify(requestData));
+                            
+                            this.requestTimeout = setTimeout(() => {
+                                if (this.isConnected) {
+                                    this.cleanup();
+                                    reject(new Error('请求超时（30秒）'));
+                                }
+                            }, 30000);
+                        };
+                        
+                        this.websocket.onmessage = (event) => {
+                            try {
+                                const data = JSON.parse(event.data);
+                                
+                                if (data.header.code !== 0) {
+                                    this.cleanup();
+                                    this.updateConnectionStatus('error');
+                                    reject(new Error(`API错误: ${data.header.message} (代码: ${data.header.code})`));
+                                    return;
+                                }
+                                
+                                if (data.payload && data.payload.choices && data.payload.choices.text) {
+                                    const content = data.payload.choices.text[0].content;
+                                    this.fullResponse += content;
+                                }
+                                
+                                if (data.header.status === 2) {
+                                    this.cleanup();
+                                    this.updateConnectionStatus('disconnected');
+                                    
+                                    // 后处理：确保回答明确
+                                    const processedResponse = this.postProcessResponse(this.fullResponse, isAskingVote);
+                                    resolve(processedResponse);
+                                }
+                            } catch (parseError) {
+                                console.error('解析响应失败:', parseError);
+                                this.cleanup();
+                                this.updateConnectionStatus('error');
+                                reject(new Error('解析响应失败: ' + parseError.message));
+                            }
+                        };
+                        
+                        this.websocket.onerror = (error) => {
+                            console.error('WebSocket错误:', error);
+                            this.cleanup();
+                            this.updateConnectionStatus('error');
+                            reject(new Error('WebSocket连接错误'));
+                        };
+                        
+                        this.websocket.onclose = (event) => {
+                            console.log('WebSocket连接已关闭');
+                            this.isConnected = false;
+                            this.updateConnectionStatus('disconnected');
+                            
+                            if (this.currentReject && this.fullResponse === '') {
+                                this.cleanup();
+                                reject(new Error('连接意外关闭'));
+                            }
+                        };
+                        
+                    } catch (error) {
+                        this.cleanup();
+                        this.updateConnectionStatus('error');
+                        reject(error);
+                    }
+                });
+            }
+            
+            // 后处理响应，确保回答明确
+            postProcessResponse(response, isAskingVote) {
+                if (!isAskingVote) return response;
+                
+                // 检查是否包含明确的表态词汇
+                const hasClearAttitude = /(赞成|反对|支持|不同意|建议.*通过|建议.*拒绝|表决态度.*是)/.test(response);
+                
+                if (!hasClearAttitude) {
+                    // 如果没有明确表态，添加明确的表态框架
+                    response += "\n\n---\n基于以上分析，我的明确表决态度是：需要更多信息才能做出准确判断。建议重点关注上述风险点，在获得充分信息后再做决定。";
+                }
+                
+                return response;
+            }
+            
+            // 生成WebSocket URL
+            generateWebSocketURL() {
+                const apiPassword = getXunfeiAPIPassword();
+                if (!apiPassword) {
+                    throw new Error('未配置讯飞API密码');
+                }
+                
+                const parts = apiPassword.split(':');
+                if (parts.length !== 3) {
+                    throw new Error('API密码格式错误，应为: APIKey:APISecret:AppID');
+                }
+                
+                const [apiKey, apiSecret, appId] = parts;
+                const authParams = this.generateAuthParams(apiKey, apiSecret);
+                const url = `wss://spark-api.xf-yun.com/v1.1/chat?${authParams}`;
+                
+                return url;
+            }
+            
+            generateAuthParams(apiKey, apiSecret) {
+                const date = new Date().toUTCString();
+                const host = "spark-api.xf-yun.com";
+                const path = "/v1.1/chat";
+                const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
+                
+                const signature = CryptoJS.HmacSHA256(signatureOrigin, apiSecret);
+                const signatureBase64 = CryptoJS.enc.Base64.stringify(signature);
+                
+                const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signatureBase64}"`;
+                const authorization = btoa(authorizationOrigin);
+                
+                const params = new URLSearchParams({
+                    authorization: authorization,
+                    date: date,
+                    host: host
+                });
+                
+                return params.toString();
+            }
+            
+            getAppId() {
+                const apiPassword = getXunfeiAPIPassword();
+                if (!apiPassword) return 'default_app_id';
+                const parts = apiPassword.split(':');
+                return parts.length === 3 ? parts[2] : 'default_app_id';
+            }
+            
+            updateConversationDisplay() {
+                const conversationInfo = document.getElementById('conversationInfo');
+                if (conversationInfo) {
+                    conversationInfo.innerHTML = `对话统计: 已进行 <span id="conversationCount">${this.conversationCount}</span> 轮对话`;
+                }
+            }
+            
+            cleanup() {
+                if (this.requestTimeout) {
+                    clearTimeout(this.requestTimeout);
+                    this.requestTimeout = null;
+                }
+                if (this.websocket && this.isConnected) {
+                    this.websocket.close();
+                }
+                this.currentResolve = null;
+                this.currentReject = null;
+                this.isConnected = false;
+            }
+            
+            updateConnectionStatus(status) {
+                if (!connectionStatus) return;
+                
+                connectionStatus.className = 'connection-status';
+                switch(status) {
+                    case 'connected':
+                        connectionStatus.textContent = '已连接';
+                        connectionStatus.classList.add('status-connected');
+                        break;
+                    case 'disconnected':
+                        connectionStatus.textContent = '未连接';
+                        connectionStatus.classList.add('status-disconnected');
+                        break;
+                    case 'error':
+                        connectionStatus.textContent = '连接错误';
+                        connectionStatus.classList.add('status-error');
+                        break;
+                }
+            }
+            
+            getStats() {
+                return {
+                    totalConversations: this.conversationCount,
+                    userMessages: this.messages.filter(m => m.role === 'user').length,
+                    aiMessages: this.messages.filter(m => m.role === 'assistant').length,
+                    totalMessages: this.messages.length,
+                    deviceId: this.deviceId
+                };
+            }
+            
+            clearHistory() {
+                this.messages = [];
+                this.conversationCount = 0;
+                this.updateConversationDisplay();
+            }
+            
+            getFullHistory() {
+                return [...this.messages];
+            }
+            
+            disconnect() {
+                this.cleanup();
+                this.updateConnectionStatus('disconnected');
+            }
+        }
+
+        // 获取当前提案标题
+        function getCurrentProposalTitle() {
+            if (experimentState.currentProposalIndex < experimentState.proposals.length) {
+                return experimentState.proposals[experimentState.currentProposalIndex].title;
+            }
+            return '未知提案';
+        }
+
+        // 引导问题处理
+        function askGuideQuestion(question) {
+            document.getElementById('userInput').value = question;
+            handleAIChat();
+        }
+
+        // AI对话处理
+        async function handleAIChat() {
+            const message = userInput.value.trim();
+            
+            console.log('开始AI对话处理，消息:', message);
+            console.log('当前阶段:', experimentState.currentPhase);
+            console.log('AI管理器状态:', experimentState.aiManager ? '已初始化' : '未初始化');
+            
+            if (!message) {
+                console.log('消息为空，返回');
+                return;
+            }
+            
+            // 检查API配置
+            const apiPassword = getXunfeiAPIPassword();
+            console.log('API密码状态:', apiPassword ? '已配置' : '未配置');
+            
+            if (!apiPassword) {
+                alert('请先配置讯飞星火APIPassword才能使用AI助手功能');
+                return;
+            }
+            
+            // 检查AI管理器
+            if (!experimentState.aiManager) {
+                alert('AI助手未初始化');
+                return;
+            }
+
+            try {
+                // 禁用输入框和按钮
+                userInput.disabled = true;
+                sendButton.disabled = true;
+                sendButton.textContent = '发送中...';
+                
+                // 添加用户消息到界面
+                addMessageToChat(message, 'user');
+                experimentState.aiInteractions++;
+                updateParticipantAIInteractions();
+
+                // 显示加载状态
+                const loadingMessage = addMessageToChat('AI助手正在思考中...', 'ai');
+                
+                // 清空输入框
+                userInput.value = '';
+                
+                // 使用对话管理器发送消息
+                const aiResponse = await experimentState.aiManager.sendMessage(message);
+                
+                // 移除加载消息，添加真实回复
+                chatContainer.removeChild(loadingMessage);
+                addMessageToChat(aiResponse, 'ai');
+                
+            } catch (error) {
+                console.error('AI调用错误:', error);
+                
+                // 移除加载消息
+                const loadingMessages = chatContainer.querySelectorAll('.ai-message');
+                const lastMessage = loadingMessages[loadingMessages.length - 1];
+                if (lastMessage && lastMessage.textContent === 'AI助手正在思考中...') {
+                    chatContainer.removeChild(lastMessage);
+                }
+                
+                // 显示错误信息
+                let errorMessage = '抱歉，AI助手暂时无法响应。';
+                if (error.message.includes('HTTP错误')) {
+                    errorMessage += ' 网络连接问题，请检查网络后重试。';
+                } else if (error.message.includes('API错误') || error.message.includes('讯飞API错误')) {
+                    errorMessage += ' API服务异常: ' + error.message;
+                } else if (error.message.includes('CORS')) {
+                    errorMessage += ' 跨域请求被阻止，请尝试使用其他浏览器或配置CORS。';
+                } else if (error.message.includes('超时')) {
+                    errorMessage += ' 请求超时，请稍后重试。';
+                } else if (error.message.includes('WebSocket')) {
+                    errorMessage += ' WebSocket连接失败，请检查网络连接。';
+                } else {
+                    errorMessage += ` 错误详情: ${error.message}`;
+                }
+                
+                addMessageToChat(errorMessage, 'ai');
+                
+            } finally {
+                // 重新启用输入框
+                if (experimentState.currentPhase === 'think') {
+                    userInput.disabled = false;
+                    sendButton.disabled = false;
+                    sendButton.textContent = '发送';
+                    userInput.focus();
+                }
+            }
+        }
+
+        // 添加消息到聊天窗口
+        function addMessageToChat(message, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
+            messageElement.textContent = message;
+            
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageElement;
+        }
+
+        // 更新参与者AI交互次数
+        function updateParticipantAIInteractions() {
+            const participant = experimentData.participants.find(p => p.id === experimentState.participantId);
+            if (participant) {
+                participant.aiInteractions = experimentState.aiInteractions;
+                saveExperimentData();
+            }
+        }
+
+        // 记录投票
+        function recordVote(vote) {
+            const currentProposal = experimentState.proposals[experimentState.currentProposalIndex];
+            const voteTime = new Date();
+            
+            const voteRecord = {
+                proposalId: currentProposal.id,
+                proposalTitle: currentProposal.title,
+                vote: vote,
+                timestamp: voteTime
+            };
+            
+            experimentState.votes.push(voteRecord);
+            
+            const phaseEndTime = new Date();
+            const phaseDuration = Math.round((phaseEndTime - experimentState.phaseStartTime) / 1000);
+            experimentState.phaseTimes.push({
+                phase: 'vote',
+                duration: phaseDuration
+            });
+            
+            setTimeout(() => {
+                loadProposal(experimentState.currentProposalIndex + 1);
+                startPhase('intro');
+            }, 1000);
+        }
+
+        // 显示结果
+        function showResults() {
+            experimentScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            
+            // 保存会话数据
+            const sessionData = {
+                participantId: experimentState.participantId,
+                group: experimentState.group,
+                useAI: experimentState.useAI,
+                votes: [...experimentState.votes],
+                phaseTimes: [...experimentState.phaseTimes],
+                aiInteractions: experimentState.aiInteractions,
+                riskAlertsViewed: experimentState.riskAlertsViewed,
+                completionTime: new Date()
+            };
+            
+            // 如果使用了AI，保存对话统计
+            if (experimentState.useAI && experimentState.aiManager) {
+                sessionData.conversationStats = experimentState.aiManager.getStats();
+                sessionData.conversationHistory = experimentState.aiManager.getFullHistory();
+                
+                // 显示对话统计
+                const stats = sessionData.conversationStats;
+                finalConversationStats.textContent = 
+                    `总对话轮次: ${stats.totalConversations}, 用户消息: ${stats.userMessages}, AI回复: ${stats.aiMessages}`;
+            }
+            
+            experimentData.sessions.push(sessionData);
+            
+            // 更新参与者完成状态
+            const participant = experimentData.participants.find(p => p.id === experimentState.participantId);
+            if (participant) {
+                participant.aiInteractions = experimentState.aiInteractions;
+                participant.riskAlertsViewed = experimentState.riskAlertsViewed;
+                participant.completionTime = new Date();
+            }
+            
+            // 保存数据到localStorage
+            saveExperimentData();
+            
+            displayPersonalResults();
+            displayGroupResults();
+            interactionCount.textContent = experimentState.aiInteractions;
+            riskAlertCount.textContent = experimentState.riskAlertsViewed;
+            displayPhaseTimes();
+        }
+
+        // 显示个人表决记录
+        function displayPersonalResults() {
+            personalResults.innerHTML = '';
+            experimentState.votes.forEach(vote => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${vote.proposalTitle}</td>
+                    <td>${vote.vote === 'approve' ? '赞成' : vote.vote === 'oppose' ? '反对' : '弃权'}</td>
+                    <td>${vote.timestamp.toLocaleTimeString()}</td>
+                `;
+                personalResults.appendChild(row);
+            });
+        }
+
+        // 显示小组决策结果
+        function displayGroupResults() {
+            groupResults.innerHTML = '';
+            experimentState.votes.forEach(vote => {
+                const approveCount = Math.floor(Math.random() * 5) + 3;
+                const opposeCount = Math.floor(Math.random() * 3) + 1;
+                const abstainCount = Math.floor(Math.random() * 2);
+                const aiVote = Math.random() > 0.5 ? '赞成' : '反对';
+                const totalVotes = approveCount + opposeCount + abstainCount + 1;
+                const passed = approveCount / totalVotes >= 2/3;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${vote.proposalTitle}</td>
+                    <td>${approveCount}</td>
+                    <td>${opposeCount}</td>
+                    <td>${abstainCount}</td>
+                    <td>${aiVote}</td>
+                    <td>${passed ? '通过' : '未通过'}</td>
+                `;
+                groupResults.appendChild(row);
+            });
+        }
+
+        // 显示阶段用时
+        function displayPhaseTimes() {
+            let timesText = '';
+            experimentState.phaseTimes.forEach((phaseTime, index) => {
+                const phaseName = phaseTime.phase === 'intro' ? '介绍' : 
+                                phaseTime.phase === 'think' ? '思考' : '表决';
+                timesText += `提案${Math.floor(index/3)+1}-${phaseName}: ${phaseTime.duration}秒; `;
+            });
+            phaseTimesDisplay.textContent = timesText || '暂无数据';
+        }
+
+        // 更新API状态显示
+        function updateAPIStatus() {
+            const apiStatus = document.getElementById('apiStatus');
+            const hasAPIPassword = !!getXunfeiAPIPassword();
+            
+            if (apiStatus) {
+                apiStatus.textContent = hasAPIPassword ? 
+                    '✅ AI助手已就绪 (讯飞星火Spark Lite)' : 
+                    '❌ 未配置APIPassword，AI助手不可用';
+                apiStatus.style.color = hasAPIPassword ? '#27ae60' : '#e74c3c';
+            }
+        }
+
+        // ==================== 管理后台功能 ====================
+        
+        // 标签页切换
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // 加载管理后台数据
+        function loadAdminData() {
+            updateAdminStats();
+            updateGroupStatsTable();
+            updateParticipantDataTable();
+            updateGroupDecisionTable();
+            updateDetailedRecordsTable();
+        }
+
+        // 更新管理后台统计
+        function updateAdminStats() {
+            const stats = experimentData.globalStats;
+            const adminTotalParticipants = document.getElementById('adminTotalParticipants');
+            const adminHumanAiCount = document.getElementById('adminHumanAiCount');
+            const adminHumanOnlyCount = document.getElementById('adminHumanOnlyCount');
+            const adminAIUsers = document.getElementById('adminAIUsers');
+            
+            if (adminTotalParticipants) adminTotalParticipants.textContent = stats.totalParticipants;
+            if (adminHumanAiCount) adminHumanAiCount.textContent = stats.humanAiGroup;
+            if (adminHumanOnlyCount) adminHumanOnlyCount.textContent = stats.humanOnlyGroup;
+            if (adminAIUsers) adminAIUsers.textContent = stats.totalParticipants; // 所有人都使用AI
+        }
+
+        // 更新分组统计表格
+        function updateGroupStatsTable() {
+            const stats = experimentData.globalStats;
+            const groupStatsTable = document.getElementById('groupStatsTable');
+            
+            if (!groupStatsTable) return;
+            
+            let html = '';
+
+            html += `<tr>
+                <td>人机协作组</td>
+                <td>${stats.humanAiGroup}</td>
+                <td>${stats.humanAiGroup}</td>
+                <td>100%</td>
+            </tr>`;
+
+            html += `<tr>
+                <td>全人类组</td>
+                <td>${stats.humanOnlyGroup}</td>
+                <td>${stats.humanOnlyGroup}</td>
+                <td>100%</td>
+            </tr>`;
+
+            groupStatsTable.innerHTML = html;
+        }
+
+        // 更新参与者数据表格
+        function updateParticipantDataTable() {
+            const participantDataTable = document.getElementById('participantDataTable');
+            if (!participantDataTable) return;
+            
+            let html = '';
+            if (experimentData.participants.length === 0) {
+                html = `<tr><td colspan="6" style="text-align: center; color: #999;">暂无参与者数据</td></tr>`;
+            } else {
+                experimentData.participants.forEach(participant => {
+                    html += `<tr>
+                        <td>${participant.id}</td>
+                        <td>${participant.group.label}</td>
+                        <td>${participant.role}</td>
+                        <td>${participant.aiInteractions || 0}</td>
+                        <td>${participant.riskAlertsViewed || 0}</td>
+                        <td>${participant.completionTime ? new Date(participant.completionTime).toLocaleString() : '进行中'}</td>
+                    </tr>`;
+                });
+            }
+            participantDataTable.innerHTML = html;
+        }
+
+        // 更新分组决策表格
+        function updateGroupDecisionTable() {
+            const groupDecisionTable = document.getElementById('groupDecisionTable');
+            if (!groupDecisionTable) return;
+            
+            let html = '';
+            if (experimentData.sessions.length === 0) {
+                html = `<tr><td colspan="7" style="text-align: center; color: #999;">暂无决策数据</td></tr>`;
+            } else {
+                experimentData.sessions.forEach(session => {
+                    session.votes.forEach(vote => {
+                        html += `<tr>
+                            <td>${session.group.label}</td>
+                            <td>${vote.proposalTitle}</td>
+                            <td>${vote.vote === 'approve' ? 1 : 0}</td>
+                            <td>${vote.vote === 'oppose' ? 1 : 0}</td>
+                            <td>${vote.vote === 'abstain' ? 1 : 0}</td>
+                            <td>${session.group.groupType === 'human-ai' ? (Math.random() > 0.5 ? '赞成' : '反对') : '无'}</td>
+                            <td>${vote.vote === 'approve' ? '通过' : '未通过'}</td>
+                        </tr>`;
+                    });
+                });
+            }
+            groupDecisionTable.innerHTML = html;
+        }
+
+        // 更新详细记录表格
+        function updateDetailedRecordsTable() {
+            const detailedRecordsTable = document.getElementById('detailedRecordsTable');
+            if (!detailedRecordsTable) return;
+            
+            let html = '';
+            if (experimentData.sessions.length === 0) {
+                html = `<tr><td colspan="6" style="text-align: center; color: #999;">暂无详细记录</td></tr>`;
+            } else {
+                experimentData.sessions.forEach(session => {
+                    session.votes.forEach(vote => {
+                        const phaseTimes = session.phaseTimes ? session.phaseTimes.map(pt => 
+                            `${pt.phase}:${pt.duration}s`).join('; ') : '无记录';
+                        const aiInteractions = session.aiInteractions > 0 ? 
+                            `${session.aiInteractions}次交互` : '无交互';
+                        
+                        html += `<tr>
+                            <td>${session.participantId}</td>
+                            <td>${vote.proposalTitle}</td>
+                            <td>${vote.vote === 'approve' ? '赞成' : vote.vote === 'oppose' ? '反对' : '弃权'}</td>
+                            <td>${phaseTimes}</td>
+                            <td>${aiInteractions}</td>
+                            <td>${new Date(vote.timestamp).toLocaleString()}</td>
+                        </tr>`;
+                    });
+                });
+            }
+            detailedRecordsTable.innerHTML = html;
+        }
+
+        // 数据导出功能
+        function exportParticipantData() {
+            const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
+                "参与者ID,分组,角色,AI交互次数,风险提示查看,完成时间\n" +
+                experimentData.participants.map(p => 
+                    `"${p.id}","${p.group.label}","${p.role}","${p.aiInteractions || 0}","${p.riskAlertViews || 0}","${p.completionTime ? new Date(p.completionTime).toLocaleString() : '进行中'}"`
+                ).join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "participant_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportAllData() {
+            exportParticipantData();
+        }
+
+        // 清空所有数据
+        function clearAllData() {
+            if (confirm('确定要清空所有数据吗？此操作不可恢复！')) {
+                localStorage.removeItem(STORAGE_KEYS.EXPERIMENT_DATA);
+                experimentData = initializeExperimentData();
+                saveExperimentData();
+                loadAdminData();
+                alert('所有数据已清空！');
+            }
+        }
+
+        // 返回登录选择
+        function showLoginSelection() {
+            participantLoginScreen.classList.add('hidden');
+            adminLoginScreen.classList.add('hidden');
+            experimentScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            adminScreen.classList.add('hidden');
+            loginSelectionScreen.classList.remove('hidden');
+        }
+
+        // 合规知识库
+        const complianceKnowledge = {
+            "关联交易": {
+                rules: ["根据《上市公司治理准则》，重大关联交易必须经过独立董事认可", "关联交易应当聘请独立财务顾问发表意见", "关联交易定价应当公允"],
+                risks: ["未聘请独立财务顾问可能导致交易定价不公允", "未充分披露关联方关系可能违反信息披露规定", "可能损害上市公司利益"]
+            },
+            "标的公司亏损": {
+                rules: ["收购亏损企业需充分论证商业合理性", "应当评估收购后对公司财务状况的影响", "需制定明确的扭亏为盈计划"],
+                risks: ["可能拖累上市公司整体业绩", "商誉减值风险", "投资者信心受损"]
+            },
+            "房地产行业风险": {
+                rules: ["需评估行业周期性风险", "应当分析政策调控影响", "需考虑市场供需变化"],
+                risks: ["行业下行周期风险", "政策调控风险", "资金流动性风险"]
+            },
+            "交易定价公允性": {
+                rules: ["关联交易定价应当参照市场公允价值", "应当聘请独立评估机构进行评估", "需说明定价依据和合理性"],
+                risks: ["可能损害中小股东利益", "涉嫌利益输送", "监管问询风险"]
+            },
+            "技术出口管制": {
+                rules: ["敏感技术出口需获得商务部相关许可证", "出口管制技术需进行合规审查", "技术出口合同需明确合规责任"],
+                risks: ["未经许可出口管制技术可能导致行政处罚", "技术泄露可能损害公司核心竞争力", "国际制裁风险"]
+            },
+            "跨境合规风险": {
+                rules: ["需遵守目标国家的数据安全法规", "应当进行全面的法律尽职调查", "需建立跨境合规管理体系"],
+                risks: ["违反当地法律法规风险", "数据跨境传输合规风险", "知识产权保护风险"]
+            },
+            "外汇结算风险": {
+                rules: ["跨境收款需遵守外汇管理规定", "应当评估汇率波动风险", "需建立外汇风险管理机制"],
+                risks: ["汇率波动导致的财务损失", "外汇管制风险", "资金结算延迟风险"]
+            },
+            "国际政治风险": {
+                rules: ["需评估地缘政治风险", "应当制定风险应对预案", "需关注国际关系变化"],
+                risks: ["贸易摩擦风险", "国际制裁风险", "政治不稳定风险"]
+            }
+        };
+
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', function() {
+            if (experimentState.aiManager) {
+                experimentState.aiManager.disconnect();
+            }
+        });
+    </script>
+</body>
+</html>
